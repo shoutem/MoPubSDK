@@ -10,7 +10,7 @@
 #import "MPBaseAdapter.h"
 #import "MPAdapterMap.h"
 #import "MPTimer.h"
-#import "CJSONDeserializer.h"
+#import "SBJson.h"
 #import <CommonCrypto/CommonDigest.h>
 #import <stdlib.h>
 #import <time.h>
@@ -922,8 +922,9 @@ static NSString * const kAdTypeClear				= @"clear";
 		if ([self.delegate respondsToSelector:selectorWithObject])
 		{
 			NSData *data = [dataString dataUsingEncoding:NSUTF8StringEncoding];
-			NSDictionary *dataDictionary = [[CJSONDeserializer deserializer] deserializeAsDictionary:data
-																							   error:NULL];
+            SBJsonParser *jsonParser = [[[SBJsonParser alloc] init] autorelease];
+			NSDictionary *dataDictionary = [jsonParser objectWithData:data];//[[CJSONDeserializer deserializer] deserializeAsDictionary:data
+//																							   error:NULL];
 			[self.delegate performSelector:selectorWithObject withObject:dataDictionary];
 		}
 		else
