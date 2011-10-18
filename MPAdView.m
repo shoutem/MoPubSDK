@@ -923,8 +923,7 @@ static NSString * const kAdTypeClear				= @"clear";
 		{
 			NSData *data = [dataString dataUsingEncoding:NSUTF8StringEncoding];
             SBJsonParser *jsonParser = [[[SBJsonParser alloc] init] autorelease];
-			NSDictionary *dataDictionary = [jsonParser objectWithData:data];//[[CJSONDeserializer deserializer] deserializeAsDictionary:data
-//																							   error:NULL];
+            NSDictionary *dataDictionary = [jsonParser objectWithString:[[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]];
 			[self.delegate performSelector:selectorWithObject withObject:dataDictionary];
 		}
 		else
