@@ -92,6 +92,7 @@ static NSArray *BROWSER_SCHEMES, *SPECIAL_HOSTS;
 
 - (void)viewWillAppear:(BOOL)animated
 {
+    [super viewWillAppear:animated];
 	// Set button enabled status.
 	_backButton.enabled = _webView.canGoBack;
 	_forwardButton.enabled = _webView.canGoForward;
