@@ -9,5 +9,17 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 
-CGRect MPScreenBounds();
-CGFloat MPDeviceScaleFactor();
+UIInterfaceOrientation MPInterfaceOrientation(void);
+CGRect MPScreenBounds(void);
+CGFloat MPDeviceScaleFactor(void);
+NSString *MPHashedUDID(void);
+NSString *MPUserAgentString(void);
+
+@interface NSString (MPAdditions)
+
+/* 
+ * Returns string with reserved/unsafe characters encoded.
+ */
+- (NSString *)URLEncodedString;
+
+@end

@@ -39,7 +39,7 @@ typedef NSUInteger InterstitialOrientationType;
 	BOOL _ready;
 	
 	// Underlying ad view used for the interstitial.
-	MPAdView *_adView;
+	MPInterstitialAdView *_adView;
 	
 	// Reference to the view controller that is presenting this interstitial.
 	UIViewController<MPInterstitialAdControllerDelegate> *_parent;
@@ -62,6 +62,10 @@ typedef NSUInteger InterstitialOrientationType;
 @property (nonatomic, readonly, assign) BOOL ready;
 @property (nonatomic, assign) UIViewController<MPInterstitialAdControllerDelegate> *parent;
 @property (nonatomic, copy) NSString *adUnitId;
+@property (nonatomic, copy) NSString *keywords;
+@property (nonatomic, copy) CLLocation *location;
+@property (nonatomic, assign) BOOL locationEnabled;
+@property (nonatomic, assign) NSUInteger locationPrecision;
 
 /*
  * A shared pool of interstitial ads.
@@ -91,6 +95,11 @@ typedef NSUInteger InterstitialOrientationType;
  */
 - (void)show;
 
+/*
+ * Returns the result of -locationDescriptionPair on the embedded ad view.
+ */
+- (NSArray *)locationDescriptionPair;
+
 @end
 
 @protocol MPInterstitialAdControllerDelegate <MPAdViewDelegate>
@@ -100,6 +109,16 @@ typedef NSUInteger InterstitialOrientationType;
  * pre-dismissal behavior (e.g. unpausing a game).
  */
 - (void)dismissInterstitial:(MPInterstitialAdController *)interstitial;
+
+/*
+ * Interstitial ads from certain networks (e.g. iAd) may expire their content at any time, 
+ * regardless of whether the content is currently on-screen. This callback notifies you when the
+ * currently-loaded interstitial has expired and is no longer eligible for display. If the ad
+ * was on-screen when it expired, you can expect that the ad will already have been dismissed 
+ * by the time this callback was fired. Your implementation of this method does not need to include 
+ * logic to dismiss an interstitial. It may include a call to -loadAd to fetch a new ad, if desired.
+ */
+- (void)interstitialDidExpire:(MPInterstitialAdController *)interstitial;
 
 @optional
 /*

@@ -8,12 +8,9 @@
 
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
-#import "MPAdBrowserController.h"
-#import "MPBaseAdapter.h"
-#import "MPStore.h"
+#import "MPGlobal.h"
 #import "MPConstants.h"
 #import "MPLogging.h"
-#import "MPGlobal.h"
 
 typedef enum
 {
@@ -28,78 +25,32 @@ typedef enum
 	MPAdAnimationTypeCount
 } MPAdAnimationType;
 
+typedef enum
+{
+	MPNativeAdOrientationAny,
+	MPNativeAdOrientationPortrait,
+	MPNativeAdOrientationLandscape
+} MPNativeAdOrientation;
+
 @protocol MPAdViewDelegate;
-@class MPTimer;
-@class MPTimerTarget;
+@class MPAdManager;
 
-@interface NSString (MPAdditions)
-
-/* 
- * Returns string with reserved/unsafe characters encoded.
- */
-- (NSString *)URLEncodedString;
-
-@end
-
-@interface UIDevice (MPAdditions)
-
-/* 
- * Produces MD5 hash of a UDID.
- */
-- (NSString *)hashedMoPubUDID;
-
-@end
-
-@class MPTimer;
-
-@interface MPAdView : UIView <UIWebViewDelegate, MPAdBrowserControllerDelegate, MPAdapterDelegate> 
+@interface MPAdView : UIView  
 {
 	// Delegate object for the ad view.
 	id<MPAdViewDelegate> _delegate;
 	
+	// "Business-logic" object for the ad view.
+	MPAdManager *_adManager;
+	
 	// Ad unit identifier for the ad view.
 	NSString *_adUnitId;
 	
-	// Targeting parameters.
-	NSString *_keywords;
+	// Location data which may be used for targeting.
 	CLLocation *_location;
-	
+		
 	// Subview that represents the actual ad content. Set via -setAdContentView.
 	UIView *_adContentView;
-	
-	// URL for initial MoPub ad request.
-	NSURL *_URL;
-	
-	// Connection object for initial ad request.
-	NSURLConnection *_conn;
-	
-	// Connection data object for ad request.
-	NSMutableData *_data;
-	
-	// Current adapter being used for serving native ads.
-	MPBaseAdapter *_currentAdapter;
-	
-	// Previous adapter.
-	MPBaseAdapter *_previousAdapter;
-	
-	// Pool of webviews being used as HTML ads.
-	NSMutableSet *_webviewPool;
-	
-	// Whether the ad is currently in the middle of a user-triggered action.
-	BOOL _adActionInProgress;
-	
-	// Click-tracking URL.
-	NSURL *_clickURL;
-	
-	// We often need to intercept ad navigation that is not the result of a
-	// click. This represents a URL prefix for links we'd like to intercept.
-	NSURL *_interceptURL;
-	
-	// Fall-back URL if an ad request fails.
-	NSURL *_failURL;
-	
-	// Impression-tracking URL.
-	NSURL *_impTrackerURL;
 	
 	// Stores the initial size of the ad view.
 	CGSize _originalSize;
@@ -108,52 +59,41 @@ typedef enum
 	// pass back size information, this value will be equal to _originalSize.
 	CGSize _creativeSize;
 	
-	// Handle to the shared store object that manages in-app purchases from ads.
-	MPStore *_store;
-	
-	// Whether we should intercept any sort of ad navigation.
-	BOOL _shouldInterceptLinks;
-	
 	// Whether scrolling is enabled for the ad view.
 	BOOL _scrollable;
 	
-	// Whether this ad view is currently loading an ad.
-	BOOL _isLoading;
+	// Whether location data should be sent with MoPub ad requests.
+	BOOL _locationEnabled;
 	
-	// Timer that sends a -forceRefreshAd message upon firing, with a time interval handed
-	// down from the server. You can set the desired interval for any ad unit using 
-	// the MoPub web interface.
-	MPTimer *_autorefreshTimer;
+	// The number of decimal digits to include in location data sent with MoPub ad requests.
+	NSUInteger _locationPrecision;
 	
-	// Used as the target object for the MPTimer, in order to avoid a retain cycle (see MPTimer.h).
-	MPTimerTarget *_timerTarget;
-	
-	// Whether the autorefresh timer needs to be scheduled. Use case: during a user-triggered ad 
-	// action, we must postpone any attempted timer scheduling until the action ends. This flag 
-	// allows the "action-ended" callbacks to decide whether the timer needs to be re-scheduled.
-	BOOL _autorefreshTimerNeedsScheduling;
-	
-	// Whether this ad view ignores autorefresh values sent down from the server. If YES,
-	// the ad view will never create an autorefresh timer.
-	BOOL _ignoresAutorefresh;
+	// Pair of strings representing latitude and longitude, taking into account the values of 
+	// _locationEnabled and _locationPrecision.
+	NSArray *_locationDescriptionPair;
 	
 	// Specifies the transition used for bringing an ad into view. You can specify an
 	// animation type for any ad unit using the MoPub web interface.
 	MPAdAnimationType _animationType;
 	
-	// Whether webviews added to this ad view should automatically stretch to the
-	// ad view's full size. Typically only set to YES for interstitial ads.
-	BOOL _stretchesWebContentToFill;
+	MPNativeAdOrientation _allowedNativeAdOrientation;
+	
+	// Whether the ad view ignores autorefresh values sent down from the server. If YES,
+	// the ad view will never refresh once it has an ad.
+	BOOL _ignoresAutorefresh;
 }
 
+@property (nonatomic, retain) MPAdManager *adManager;
 @property (nonatomic, assign) id<MPAdViewDelegate> delegate;
 @property (nonatomic, copy) NSString *adUnitId;
-@property (nonatomic, copy) NSString *keywords;
-@property (nonatomic, retain) CLLocation *location;
-@property (nonatomic, copy) NSURL *URL;
-@property (nonatomic, assign) BOOL ignoresAutorefresh;
-@property (nonatomic, assign) BOOL stretchesWebContentToFill;
+@property (nonatomic, copy) CLLocation *location;
+@property (nonatomic, retain) NSString *keywords;
 @property (nonatomic, assign) CGSize creativeSize;
+@property (nonatomic, assign) BOOL scrollable;
+@property (nonatomic, assign) BOOL locationEnabled;
+@property (nonatomic, assign) NSUInteger locationPrecision;
+@property (nonatomic, assign) MPAdAnimationType animationType;
+@property (nonatomic, assign) BOOL ignoresAutorefresh;
 
 /*
  * Returns an MPAdView with the given ad unit ID.
@@ -166,6 +106,13 @@ typedef enum
  * to avoid clipping or border issues.
  */
 - (CGSize)adContentViewSize;
+
+/*
+ * Returns an array of two strings representing location coordinates (possibly truncated) as long as
+ * a location has been set and locationEnabled is set to YES. If these conditions are not met, this 
+ * method will return nil.
+ */
+- (NSArray *)locationDescriptionPair;
 
 /*
  * Loads a new ad using a default URL constructed from the ad unit ID.
@@ -230,17 +177,35 @@ typedef enum
  */
 - (void)customEventDidFailToLoadAd;
 
-/**
- * Pauses refresh of ads from server
+/*
+ * Signals to the ad view that a user has tapped on a custom-event-triggered ad.
+ * You must call this method if you implement custom events, for proper click tracking.
  */
-- (void)pauseAutorefresh;
+- (void)customEventActionWillBegin;
 
-/**
- * Resumes refresh of ads from server
+/*
+ * Signals to the ad view that a user has stopped interacting with a custom-event-triggered ad. 
+ * You must call this method if you implement custom events.
  */
-- (void)resumeAutorefresh;
+- (void)customEventActionDidEnd;
+
+/*
+ * Forces native ad networks to only use ads sized for the specified orientation. For instance, 
+ * if you call this with UIInterfaceOrientationPortrait, native networks (e.g. iAd) will never 
+ * return ads sized for the landscape orientation.
+ */
+- (void)lockNativeAdsToOrientation:(MPNativeAdOrientation)orientation;
+
+/*
+ * Allows native ad networks to use ads sized for any orientation. See -lockNativeAdsToOrientation:.
+ */
+- (void)unlockNativeAdsOrientation;
+
+- (MPNativeAdOrientation)allowedNativeAdsOrientation;
 
 @end
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @protocol MPAdViewDelegate <NSObject>
 
@@ -274,12 +239,18 @@ typedef enum
  * (headers) from the MoPub server. See MPInterstitialAdController for an
  * example of how this should be used.
  */
-- (void)adViewDidReceiveResponseParams:(NSDictionary *)params;
+- (void)adView:(MPAdView *)view didReceiveResponseParams:(NSDictionary *)params;
 
 /*
  * This method is called when a mopub://close link is activated. Your implementation of this
  * method should remove the ad view from the screen (see MPInterstitialAdController for an example).
  */
 - (void)adViewShouldClose:(MPAdView *)view;
+
+@end
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+@interface MPInterstitialAdView : MPAdView
 
 @end

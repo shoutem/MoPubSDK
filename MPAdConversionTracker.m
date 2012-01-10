@@ -7,10 +7,15 @@
 //
 
 #import "MPAdConversionTracker.h"
-#import "MPAdView.h"
+#import "MPConstants.h"
+#import "MPGlobal.h"
+#import "MPLogging.h"
+
+#define kUserAgentContextKey @"user-agent"
+#define kApplicationIdContextKey @"app-id"
 
 @interface MPAdConversionTracker (Internal)
-- (void)reportApplicationOpenSynchronous:(NSString *)appID;
+- (void)reportApplicationOpenSynchronous:(NSDictionary *)context;
 @end
 
 @implementation MPAdConversionTracker
@@ -29,38 +34,59 @@
 
 - (void)reportApplicationOpenForApplicationID:(NSString *)appID
 {
-	[self performSelectorInBackground:@selector(reportApplicationOpenSynchronous:) withObject:appID];
+	// MPUserAgentString() must be called on the main thread, since it manipulates a UIWebView.
+	NSString *userAgent = MPUserAgentString();
+	NSDictionary *context = [NSDictionary dictionaryWithObjectsAndKeys:
+							 userAgent, kUserAgentContextKey,
+							 appID, kApplicationIdContextKey, nil];
+	
+	[self performSelectorInBackground:@selector(reportApplicationOpenSynchronous:) 
+						   withObject:context];
 }
 
 #pragma mark -
 #pragma mark Internal
 
-- (void)reportApplicationOpenSynchronous:(NSString *)appID
+- (void)reportApplicationOpenSynchronous:(NSDictionary *)context
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init]; 
-
-	NSString *documentsDir = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-																  NSUserDomainMask, YES) objectAtIndex:0];
+	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	
+	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+	if ([paths count] <= 0) return;
+	
+	NSString *documentsDir = [paths objectAtIndex:0];
 	NSString *appOpenLogPath = [documentsDir stringByAppendingPathComponent:@"mopubAppOpen.log"];
 	NSFileManager *fileManager = [NSFileManager defaultManager];
 	
 	// The existence of mopubAppOpen.log tells us whether we have already reported this app open.
-	if (![fileManager fileExistsAtPath:appOpenLogPath]) 
+	if ([fileManager fileExistsAtPath:appOpenLogPath]) return;
+	
+	NSString *appID = [context objectForKey:kApplicationIdContextKey];
+	NSString *userAgent = [context objectForKey:kUserAgentContextKey];
+	
+	NSString *appOpenUrlString = [NSString stringWithFormat:@"http://%@/m/open?v=7&udid=%@&id=%@",
+								  HOSTNAME,
+								  MPHashedUDID(),
+								  appID];
+	
+	MPLogInfo(@"Reporting application did launch for the first time to MoPub: %@", appOpenUrlString);
+	
+	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:
+									[NSURL URLWithString:appOpenUrlString]];
+	[request setValue:userAgent forHTTPHeaderField:@"User-Agent"];
+	
+	NSURLResponse *response;
+	NSError *error = nil;
+	NSData *responseData = [NSURLConnection sendSynchronousRequest:request 
+												 returningResponse:&response 
+															 error:&error];
+	
+	if ((!error) && ([(NSHTTPURLResponse *)response statusCode] == 200) && 
+		([responseData length] > 0))
 	{
-		NSString *appOpenUrlString = [NSString stringWithFormat:@"http://%@/m/open?v=3&udid=%@&id=%@",
-									  HOSTNAME,
-									  [[UIDevice currentDevice] hashedMoPubUDID],
-									  appID 
-									  ];
-		MPLogInfo(@"Reporting application did launch for the first time to MoPub: %@", appOpenUrlString);
-		NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:appOpenUrlString]];
-		NSURLResponse *response;
-		NSError *error = nil;
-		NSData *responseData = [NSURLConnection sendSynchronousRequest:request returningResponse:&response error:&error];
-		if ((!error) && ([(NSHTTPURLResponse *)response statusCode] == 200) && ([responseData length] > 0))
-			[fileManager createFileAtPath:appOpenLogPath contents:nil attributes:nil];
+		[fileManager createFileAtPath:appOpenLogPath contents:nil attributes:nil];
 	}
+	
 	[pool release];
 }
-
 @end

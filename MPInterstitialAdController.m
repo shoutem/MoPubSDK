@@ -9,7 +9,8 @@
 #import "MPInterstitialAdController.h"
 #import "MPBaseInterstitialAdapter.h"
 #import "MPAdapterMap.h"
-#import "MPAdView+InterstitialPrivate.h"
+#import "MPAdView+MPInterstitialAdControllerFriend.h"
+#import "MPAdManager+MPInterstitialAdControllerFriend.h"
 
 static const CGFloat kCloseButtonPadding				= 6.0;
 static NSString * const kCloseButtonXImageName			= @"MPCloseButtonX.png";
@@ -22,16 +23,16 @@ static NSString * const kOrientationPortraitOnly		= @"p";
 static NSString * const kOrientationLandscapeOnly		= @"l";
 static NSString * const kOrientationBoth				= @"b";
 
-@interface MPInterstitialAdController (Internal)
+@interface MPInterstitialAdController ()
+
+@property (nonatomic, retain) UIButton *closeButton;
+@property (nonatomic, retain) MPBaseInterstitialAdapter *currentAdapter;
 
 - (id)initWithAdUnitId:(NSString *)ID parentViewController:(UIViewController *)parent;
 - (void)setCloseButtonImageNamed:(NSString *)name;
 - (void)layoutCloseButton;
-@end
+- (void)closeButtonPressed;
 
-@interface MPInterstitialAdController ()
-@property (nonatomic, retain) UIButton *closeButton;
-@property (nonatomic, retain) MPBaseInterstitialAdapter *currentAdapter;
 @end
 
 @implementation MPInterstitialAdController
@@ -41,6 +42,10 @@ static NSString * const kOrientationBoth				= @"b";
 @synthesize adUnitId = _adUnitId;
 @synthesize closeButton = _closeButton;
 @synthesize currentAdapter = _currentAdapter;
+@synthesize keywords;
+@synthesize location;
+@synthesize locationEnabled;
+@synthesize locationPrecision;
 
 #pragma mark -
 #pragma mark Class methods
@@ -102,18 +107,19 @@ static NSString * const kOrientationBoth				= @"b";
 #pragma mark -
 #pragma mark Lifecycle
 
-- (id)initWithAdUnitId:(NSString *)ID parentViewController:(UIViewController *)parent
+- (id)initWithAdUnitId:(NSString *)ID 
+  parentViewController:(UIViewController<MPInterstitialAdControllerDelegate> *)parent
 {
 	if (self = [super init])
 	{
-		_ready = NO;
 		_parent = parent;
-		_adUnitId = ID;
+		_adUnitId = [ID copy];
 		_closeButtonType = InterstitialCloseButtonTypeDefault;
 		_orientationType = InterstitialOrientationTypeBoth;
 		
-		_adView = [[MPAdView alloc] initWithAdUnitId:self.adUnitId size:CGSizeZero];
-		_adView.stretchesWebContentToFill = YES;
+		CGRect bounds = [UIScreen mainScreen].bounds;
+		_adView = [[MPInterstitialAdView alloc] initWithAdUnitId:self.adUnitId size:bounds.size];
+		_adView.ignoresAutorefresh = YES;
 		_adView.delegate = self;
 		
 		// Typically, we don't set an autoresizing mask for MPAdView, but in this case we always
@@ -137,31 +143,33 @@ static NSString * const kOrientationBoth				= @"b";
 
 - (void)loadView 
 {
-	CGRect screenBounds = MPScreenBounds();
-	
 	self.view = [[[UIView alloc] initWithFrame:CGRectZero] autorelease];
 	self.view.backgroundColor = [UIColor blackColor];
-	self.view.frame = screenBounds;
+	self.view.frame = [UIScreen mainScreen].bounds;
 	self.view.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
 	
-	_adView.frame = self.view.bounds;
-	
 	[self.view addSubview:_adView];
+	
 	[self layoutCloseButton];
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
 	[super viewWillAppear:animated];
-	
-	if ([self.parent respondsToSelector:@selector(interstitialWillAppear:)])
-		[self.parent interstitialWillAppear:self];
 }
 
 - (void)viewDidAppear:(BOOL)animated
 {
 	[super viewDidAppear:animated];
 	[_adView adViewDidAppear];
+}
+
+- (void)viewDidDisappear:(BOOL)animated
+{
+	// -viewDidDisappear: is called when the interstitial is dismissed and when presenting a modal
+	// view such as the ad browser. We only want to send a "did disappear" message to the delegate
+	// for the first case -- when the interstitial has actually been dismissed.
+	if (!self.modalViewController) [self interstitialDidDisappearForAdapter:nil];
 }
 
 #pragma mark -
@@ -210,14 +218,38 @@ static NSString * const kOrientationBoth				= @"b";
 
 #pragma mark -
 
-- (void)setKeywords:(NSString *)keywords
+- (void)setKeywords:(NSString *)words
 {
-	_adView.keywords = keywords;
+	_adView.keywords = words;
 }
 
 - (NSString *)keywords
 {
 	return _adView.keywords;
+}
+
+- (void)setLocation:(CLLocation *)loc {
+	_adView.location = loc;
+}
+
+- (CLLocation *)location {
+	return _adView.location;
+}
+
+- (void)setLocationEnabled:(BOOL)enabled {
+	_adView.locationEnabled = enabled;
+}
+
+- (BOOL)locationEnabled {
+	return _adView.locationEnabled;
+}
+
+- (void)setLocationPrecision:(NSUInteger)precision {
+	_adView.locationPrecision = precision;
+}
+
+- (NSUInteger)locationPrecision {
+	return _adView.locationPrecision;
 }
 
 - (void)closeButtonPressed
@@ -226,6 +258,7 @@ static NSString * const kOrientationBoth				= @"b";
 	[[UIApplication sharedApplication] setStatusBarHidden:_statusBarWasHidden];
 	[self.navigationController setNavigationBarHidden:_navigationBarWasHidden animated:NO];
 	
+	[self interstitialWillDisappearForAdapter:nil];
 	[self.parent dismissInterstitial:self];
 }
 
@@ -257,6 +290,10 @@ static NSString * const kOrientationBoth				= @"b";
 	}
 }
 
+- (NSArray *)locationDescriptionPair {
+	return [_adView locationDescriptionPair];
+}
+
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation 
 {
 	if (_orientationType == InterstitialOrientationTypePortrait)
@@ -268,10 +305,11 @@ static NSString * const kOrientationBoth				= @"b";
 	else return YES;
 }
 
-- (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation 
-										 duration:(NSTimeInterval)duration
-{
-	[super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
+	[super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+	
+	// Forward the orientation event to the ad view, passing in our current orientation.
+	[_adView rotateToOrientation:self.interfaceOrientation];
 }
 
 #pragma mark -
@@ -304,7 +342,13 @@ static NSString * const kOrientationBoth				= @"b";
 		[self.parent willPresentModalViewForAd:view];
 }
 
-- (void)adViewDidReceiveResponseParams:(NSDictionary *)params
+- (void)didDismissModalViewForAd:(MPAdView *)view
+{
+	if ([self.parent respondsToSelector:@selector(didDismissModalViewForAd:)])
+		[self.parent didDismissModalViewForAd:view];
+}
+
+- (void)adView:(MPAdView *)view didReceiveResponseParams:(NSDictionary *)params
 {
 	NSString *closeButtonChoice = [params objectForKey:kCloseButtonHeaderKey];
 	
@@ -332,8 +376,9 @@ static NSString * const kOrientationBoth				= @"b";
 	if (cls != nil)
 	{
 		[self.currentAdapter unregisterDelegate];	
-		self.currentAdapter = (MPBaseInterstitialAdapter *)[[cls alloc] initWithInterstitialAdController:self];
-		[self.currentAdapter getAdWithParams:params];
+		self.currentAdapter = [(MPBaseInterstitialAdapter *)
+							   [[cls alloc] initWithInterstitialAdController:self] autorelease];
+		[self.currentAdapter _getAdWithParams:params];
 	}
 	else 
 	{
@@ -353,7 +398,7 @@ static NSString * const kOrientationBoth				= @"b";
 - (void)adapterDidFinishLoadingAd:(MPBaseInterstitialAdapter *)adapter
 {	
 	_ready = YES;
-	_adView.isLoading = NO;
+	_adView.adManager.isLoading = NO;
 	if ([self.parent respondsToSelector:@selector(interstitialDidLoadAd:)])
 		[self.parent interstitialDidLoadAd:self];
 }
@@ -367,12 +412,12 @@ static NSString * const kOrientationBoth				= @"b";
 	[self.currentAdapter unregisterDelegate];
 	self.currentAdapter = nil;
 	
-	[_adView adapter:nil didFailToLoadAdWithError:error];
+	[_adView.adManager adapter:nil didFailToLoadAdWithError:error];
 }
 
 - (void)interstitialWillAppearForAdapter:(MPBaseInterstitialAdapter *)adapter
 {
-	[_adView trackImpression];
+	[_adView.adManager trackImpression];
 	if ([self.parent respondsToSelector:@selector(interstitialWillAppear:)])
 		[self.parent interstitialWillAppear:self];
 }
@@ -393,6 +438,18 @@ static NSString * const kOrientationBoth				= @"b";
 {
 	if ([self.parent respondsToSelector:@selector(interstitialDidDisappear:)])
 		[self.parent interstitialDidDisappear:self];
+}
+
+- (void)interstitialWasTappedForAdapter:(MPBaseInterstitialAdapter *)adapter
+{
+    [_adView.adManager trackClick];
+}
+
+- (void)interstitialDidExpireForAdapter:(MPBaseInterstitialAdapter *)adapter
+{
+    _ready = NO;
+    if ([self.parent respondsToSelector:@selector(interstitialDidExpire:)])
+        [self.parent interstitialDidExpire:self];
 }
 
 #pragma mark -

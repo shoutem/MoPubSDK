@@ -8,21 +8,18 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import "MPAdView.h"
 
-@class MPAdView;
+@protocol MPAdapterDelegate;
 
 @interface MPBaseAdapter : NSObject 
 {
-	// Reference to the parent MPAdView.
-	MPAdView *_adView;
+	id<MPAdapterDelegate> _delegate;
 }
 
-@property (nonatomic, readonly) MPAdView *adView;
+@property (nonatomic, readonly) id<MPAdapterDelegate> delegate;
 
-/*
- * Creates an adapter with a reference to an MPAdView.
- */
-- (id)initWithAdView:(MPAdView *)adView;
+- (id)initWithAdapterDelegate:(id<MPAdapterDelegate>)delegate;
 
 /*
  * Sets the adapter's delegate to nil.
@@ -37,25 +34,42 @@
 - (void)getAdWithParams:(NSDictionary *)params;
 
 /*
+ * This method wraps -getAdWithParams: with calls to -retain and -release, since that method
+ * may prematurely deallocate the adapter during its own execution (as the result of various
+ * callbacks).
+ */
+- (void)_getAdWithParams:(NSDictionary *)params;
+
+/*
  * Your subclass should implement this method if your native ads vary depending on orientation.
  */
 - (void)rotateToOrientation:(UIInterfaceOrientation)newOrientation;
 
 @end
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
 @protocol MPAdapterDelegate
+
 @required
+
+- (MPAdView *)adView;
+- (CGSize)maximumAdSize;
+- (UIViewController *)viewControllerForPresentingModalView;
+- (MPNativeAdOrientation)allowedNativeAdsOrientation;
+
 /*
  * These callbacks notify you that the adapter (un)successfully loaded an ad.
  */
-- (void)adapterDidFinishLoadingAd:(MPBaseAdapter *)adapter;
 - (void)adapter:(MPBaseAdapter *)adapter didFailToLoadAdWithError:(NSError *)error;
+- (void)adapter:(MPBaseAdapter *)adapter didFinishLoadingAd:(UIView *)ad 
+		shouldTrackImpression:(BOOL)shouldTrack;
 
 /*
  * These callbacks notify you that the user interacted (or stopped interacting) with the native ad.
  */
 - (void)userActionWillBeginForAdapter:(MPBaseAdapter *)adapter;
-- (void)userActionDidEndForAdapter:(MPBaseAdapter *)adapter;
+- (void)userActionDidFinishForAdapter:(MPBaseAdapter *)adapter;
 
 /*
  * This callback notifies you that user has tapped on an ad which will cause them to leave the 
