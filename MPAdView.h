@@ -83,7 +83,6 @@ typedef enum
 	BOOL _ignoresAutorefresh;
 }
 
-@property (nonatomic, retain) MPAdManager *adManager;
 @property (nonatomic, assign) id<MPAdViewDelegate> delegate;
 @property (nonatomic, copy) NSString *adUnitId;
 @property (nonatomic, copy) CLLocation *location;
@@ -252,5 +251,7 @@ typedef enum
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 @interface MPInterstitialAdView : MPAdView
+
+- (void)forceRedraw;
 
 @end
