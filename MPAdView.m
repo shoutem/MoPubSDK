@@ -21,7 +21,6 @@ static NSString * const kNewContentViewKey = @"NewContentView";
 
 @interface MPAdView ()
 
-@property (nonatomic, retain) MPAdManager *adManager;
 @property (nonatomic, retain) UIView *adContentView;
 @property (nonatomic, assign) CGSize originalSize;
 @property (nonatomic, retain) NSArray *locationDescriptionPair;

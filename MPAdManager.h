@@ -125,6 +125,7 @@ extern NSString * const kAdTypeClear;
 
 @property (nonatomic, readonly) MPAdView *adView;
 
+@property (nonatomic, retain) MPTimer *autorefreshTimer;
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

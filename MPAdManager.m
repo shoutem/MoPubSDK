@@ -62,7 +62,7 @@ NSString * const kAdTypeMraid = @"mraid";
 @property (nonatomic, assign) BOOL ignoresAutorefresh;
 @property (nonatomic, assign) BOOL adActionInProgress;
 @property (nonatomic, assign) BOOL autorefreshTimerNeedsScheduling;	
-@property (nonatomic, retain) MPTimer *autorefreshTimer;
+
 @property (nonatomic, retain) NSMutableData *data;
 @property (nonatomic, retain) NSDictionary *headers;
 @property (nonatomic, retain) NSMutableSet *webviewPool;

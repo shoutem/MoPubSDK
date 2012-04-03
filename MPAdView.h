@@ -94,6 +94,7 @@ typedef enum
 @property (nonatomic, assign) MPAdAnimationType animationType;
 @property (nonatomic, assign) BOOL ignoresAutorefresh;
 
+@property (nonatomic, retain) MPAdManager *adManager;
 /*
  * Returns an MPAdView with the given ad unit ID.
  */
