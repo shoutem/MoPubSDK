@@ -31,7 +31,7 @@ static NSString *const kMovieWillExitNotification42 =
 
 @interface MRAdViewDisplayController ()
 
-@property (nonatomic, retain) MRAdView *twoPartExpansionView;
+@property (nonatomic) MRAdView *twoPartExpansionView;
 
 - (CGRect)defaultPosition;
 - (void)checkViewability;
@@ -81,11 +81,11 @@ static NSString *const kMovieWillExitNotification42 =
         
         _viewabilityTimerTarget = [[MPTimerTarget alloc] 
                                    initWithNotificationName:kViewabilityTimerNotificationName];
-        _viewabilityTimer = [[MPTimer scheduledTimerWithTimeInterval:kViewabilityTimerInterval
+        _viewabilityTimer = [MPTimer scheduledTimerWithTimeInterval:kViewabilityTimerInterval
                                                               target:_viewabilityTimerTarget
                                                             selector:@selector(postNotification)
                                                             userInfo:nil
-                                                             repeats:YES] retain];
+                                                             repeats:YES];
         
         [[NSNotificationCenter defaultCenter] addObserver:self
                                                  selector:@selector(checkViewability)
@@ -120,13 +120,8 @@ static NSString *const kMovieWillExitNotification42 =
 }
 
 - (void)dealloc {
-    [_twoPartExpansionView release];
     [_viewabilityTimer invalidate];
-    [_viewabilityTimer release];
-    [_viewabilityTimerTarget release];
-    [_dimmingView release];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [super dealloc];
 }
 
 #pragma mark - Public
@@ -232,10 +227,10 @@ shouldLockOrientation:(BOOL)shouldLockOrientation {
     [MPKeyWindow() addSubview:_dimmingView];
     
     if (url) {
-        self.twoPartExpansionView = [[[MRAdView alloc] initWithFrame:self.view.frame 
+        self.twoPartExpansionView = [[MRAdView alloc] initWithFrame:self.view.frame 
                                                      allowsExpansion:NO
                                                     closeButtonStyle:MRAdViewCloseButtonStyleAdControlled 
-                                                       placementType:MRAdViewPlacementTypeInline] autorelease];
+                                                       placementType:MRAdViewPlacementTypeInline];
         self.twoPartExpansionView.delegate = self;
         [self.twoPartExpansionView loadCreativeFromURL:url];
         

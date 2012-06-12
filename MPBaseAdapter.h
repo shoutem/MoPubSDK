@@ -14,10 +14,10 @@
 
 @interface MPBaseAdapter : NSObject 
 {
-	id<MPAdapterDelegate> _delegate;
+	id<MPAdapterDelegate> __unsafe_unretained _delegate;
 }
 
-@property (nonatomic, readonly) id<MPAdapterDelegate> delegate;
+@property (unsafe_unretained, nonatomic, readonly) id<MPAdapterDelegate> delegate;
 
 - (id)initWithAdapterDelegate:(id<MPAdapterDelegate>)delegate;
 

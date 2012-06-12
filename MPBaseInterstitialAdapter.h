@@ -13,10 +13,10 @@
 
 @interface MPBaseInterstitialAdapter : NSObject 
 {
-	MPInterstitialAdController *_interstitialAdController;
+	MPInterstitialAdController *__unsafe_unretained _interstitialAdController;
 }
 
-@property (nonatomic, readonly) MPInterstitialAdController *interstitialAdController;
+@property (unsafe_unretained, nonatomic, readonly) MPInterstitialAdController *interstitialAdController;
 
 /*
  * Creates an adapter with a reference to an MPAdView.

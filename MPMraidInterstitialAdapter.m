@@ -27,13 +27,10 @@
     _adView.delegate = self;
     [_adView loadCreativeWithHTMLString:payloadString baseURL:nil];
     
-    [payloadString release];
 }
 
 - (void)dealloc {
     _adView.delegate = nil;
-    [_adView release];
-    [super dealloc];
 }
 
 - (void)showInterstitialFromViewController:(UIViewController *)controller {

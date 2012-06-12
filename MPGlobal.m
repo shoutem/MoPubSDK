@@ -77,7 +77,6 @@ NSString *MPUserAgentString()
     if (!userAgent) {
         UIWebView *webview = [[UIWebView alloc] init];
         userAgent = [[webview stringByEvaluatingJavaScriptFromString:@"navigator.userAgent"] copy];  
-        [webview release];
     }
     return userAgent;
 }
@@ -102,10 +101,10 @@ NSString *MPHashedUDID()
     if (cachedIdentifier) return cachedIdentifier;
     
     NSUserDefaults *userDefaults = [NSUserDefaults standardUserDefaults];
-    cachedIdentifier = [[userDefaults objectForKey:MOPUB_IDENTIFIER_DEFAULTS_KEY] retain];
+    cachedIdentifier = [userDefaults objectForKey:MOPUB_IDENTIFIER_DEFAULTS_KEY];
     if (!cachedIdentifier)
     {
-        cachedIdentifier = [MPGenerateUDID() retain];
+        cachedIdentifier = MPGenerateUDID();
         [userDefaults setObject:cachedIdentifier forKey:MOPUB_IDENTIFIER_DEFAULTS_KEY];
         [userDefaults synchronize];
     }
@@ -164,12 +163,12 @@ NSString *MPSHA1Digest(NSString *string)
 
 - (NSString *)URLEncodedString
 {
-	NSString *result = (NSString *)CFURLCreateStringByAddingPercentEscapes(NULL,
-																		   (CFStringRef)self,
+	NSString *result = (__bridge_transfer NSString *)CFURLCreateStringByAddingPercentEscapes(NULL,
+																		   (__bridge CFStringRef)self,
 																		   NULL,
 																		   (CFStringRef)@"!*'();:@&=+$,/?%#[]<>",
 																		   kCFStringEncodingUTF8);
-	return [result autorelease];
+	return result;
 }
 
 @end

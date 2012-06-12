@@ -29,7 +29,6 @@
     
     [_view adWillPresentModalView];
     [self.viewControllerForPresentingModalView presentModalViewController:controller animated:YES];
-    [controller release];
 }
 
 #pragma mark -

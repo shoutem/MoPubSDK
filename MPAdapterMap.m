@@ -27,7 +27,7 @@ static MPAdapterMap *sharedAdapterMap = nil;
 {
 	if (self = [super init])
 	{
-		_map = [[NSDictionary dictionaryWithObjectsAndKeys:
+		_map = [NSDictionary dictionaryWithObjectsAndKeys:
 				 @"MPIAdAdapter", @"iAd",
                  @"MPIAdInterstitialAdapter", @"iAd_full",
 				 @"MPGoogleAdSenseAdapter", @"adsense",
@@ -38,16 +38,11 @@ static MPAdapterMap *sharedAdapterMap = nil;
 				 @"MPMillennialInterstitialAdapter", @"millennial_full",
 				 @"MPInterstitialAdapter", @"interstitial",
 				 @"MPMraidInterstitialAdapter", @"mraid",
-				 nil] retain];
+				 nil];
 	}
 	return self;
 }
 
-- (void)dealloc
-{
-	[_map release];
-	[super dealloc];
-}
 
 - (NSString *)classStringForAdapterType:(NSString *)type
 {

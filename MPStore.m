@@ -65,18 +65,14 @@ static MPStore *sharedStore = nil;
 	return self;
 }
 
-- (void)dealloc
-{
-	[super dealloc];
-}
 
 #pragma mark -
 #pragma mark Internal
 
 - (void)requestProductDataForProductIdentifier:(NSString *)identifier
 {
-	SKProductsRequest *request = [[[SKProductsRequest alloc] initWithProductIdentifiers:
-								  [NSSet setWithObject:identifier]] autorelease];
+	SKProductsRequest *request = [[SKProductsRequest alloc] initWithProductIdentifiers:
+								  [NSSet setWithObject:identifier]];
 	request.delegate = self;
 	[request start];
 }
@@ -95,8 +91,8 @@ static MPStore *sharedStore = nil;
 	NSURL *url = [NSURL URLWithString:
                   [NSString stringWithFormat:@"http://%@%@", HOSTNAME, STORE_RECEIPT_SUFFIX]];
 	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
-	NSString *receiptString = [[[NSString alloc] initWithData:transaction.transactionReceipt 
-													 encoding:NSUTF8StringEncoding] autorelease];
+	NSString *receiptString = [[NSString alloc] initWithData:transaction.transactionReceipt 
+													 encoding:NSUTF8StringEncoding];
 	NSString *postBody = [NSString stringWithFormat:@"udid=%@&receipt=%@", 
 						  MPHashedUDID(),
 						  [receiptString URLEncodedString]];

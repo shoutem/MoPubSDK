@@ -24,7 +24,6 @@
 - (void)dealloc
 {
 	[self unregisterDelegate];
-	[super dealloc];
 }
 
 - (void)unregisterDelegate
@@ -45,9 +44,7 @@
 
 - (void)_getAdWithParams:(NSDictionary *)params
 {
-  [self retain];
   [self getAdWithParams:params];
-  [self release];
 }
 
 - (void)rotateToOrientation:(UIInterfaceOrientation)newOrientation

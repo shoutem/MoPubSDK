@@ -49,7 +49,7 @@ NSString * const kAdTypeMraid = @"mraid";
 
 @interface MPAdManager ()
 
-@property (nonatomic, assign) MPAdView *adView;
+@property (unsafe_unretained, nonatomic, assign) MPAdView *adView;
 @property (nonatomic, copy) NSString *adUnitId;
 @property (nonatomic, copy) NSString *keywords;
 @property (nonatomic, copy) NSURL *URL;
@@ -63,11 +63,11 @@ NSString * const kAdTypeMraid = @"mraid";
 @property (nonatomic, assign) BOOL adActionInProgress;
 @property (nonatomic, assign) BOOL autorefreshTimerNeedsScheduling;	
 
-@property (nonatomic, retain) NSMutableData *data;
-@property (nonatomic, retain) NSDictionary *headers;
-@property (nonatomic, retain) NSMutableSet *webviewPool;
-@property (nonatomic, retain) MPBaseAdapter *currentAdapter;
-@property (nonatomic, retain) NSMutableURLRequest *request;
+@property (nonatomic) NSMutableData *data;
+@property (nonatomic) NSDictionary *headers;
+@property (nonatomic) NSMutableSet *webviewPool;
+@property (nonatomic) MPBaseAdapter *currentAdapter;
+@property (nonatomic) NSMutableURLRequest *request;
 
 - (void)loadAdWithURL:(NSURL *)URL;
 - (void)forceRefreshAd;
@@ -124,8 +124,8 @@ NSString * const kAdTypeMraid = @"mraid";
 
 - (id)init {
 	if (self = [super init]) {
-		_data = [[NSMutableData data] retain];
-		_webviewPool = [[NSMutableSet set] retain];
+		_data = [NSMutableData data];
+		_webviewPool = [NSMutableSet set];
 		_shouldInterceptLinks = YES;
 		_timerTarget = [[MPTimerTarget alloc] initWithNotificationName:kTimerNotificationName];
         _request = [[NSMutableURLRequest alloc] initWithURL:nil
@@ -174,27 +174,11 @@ NSString * const kAdTypeMraid = @"mraid";
 	[self destroyWebviewPool];
 	
 	[_currentAdapter unregisterDelegate];
-	[_currentAdapter release];
 	[_previousAdapter unregisterDelegate];
-	[_previousAdapter release];
-	[_adUnitId release];
 	[_conn cancel];
-	[_conn release];
-	[_data release];
-	[_headers release];
-	[_URL release];
-	[_clickURL release];
-	[_interceptURL release];
-	[_failURL release];
-	[_impTrackerURL release];
-	[_keywords release];
 	[_autorefreshTimer invalidate];
-	[_autorefreshTimer release];
-	[_timerTarget release];
-    [_request release];
 	
 	_adView = nil;
-    [super dealloc];
 }
 
 - (void)removeWebviewFromPool:(UIWebView *)webview
@@ -209,7 +193,6 @@ NSString * const kAdTypeMraid = @"mraid";
 		[webview setDelegate:nil];
 		[webview stopLoading];
 	}
-	[_webviewPool release];
 }
 
 - (void)refreshAd
@@ -240,8 +223,7 @@ NSString * const kAdTypeMraid = @"mraid";
 	MPLogDebug(@"Ad view (%p) loading ad with MoPub server URL: %@", self.adView, self.URL);
 	
     _request.URL = self.URL;
-	[_conn release];
-	_conn = [[NSURLConnection connectionWithRequest:_request delegate:self] retain];
+	_conn = [NSURLConnection connectionWithRequest:_request delegate:self];
 	_isLoading = YES;
 	
 	MPLogInfo(@"Ad manager (%p) fired initial ad request.", self);
@@ -318,7 +300,7 @@ NSString * const kAdTypeMraid = @"mraid";
 		[queryDict setObject:[value stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding] 
 					  forKey:key];
 	}
-	return [queryDict autorelease];
+	return queryDict;
 }
 
 - (void)trackClick
@@ -482,18 +464,15 @@ NSString * const kAdTypeMraid = @"mraid";
 																				 delegate:self];
 	[[self viewControllerForPresentingModalView] presentModalViewController:browserController 			
 																   animated:YES];
-	[browserController release];
 }
 
 - (void)replaceCurrentAdapterWithAdapter:(MPBaseAdapter *)newAdapter
 {
 	// Dispose of the last adapter stored in _previousAdapter.
 	[_previousAdapter unregisterDelegate];
-  [_previousAdapter release];
 	
 	_previousAdapter = _currentAdapter;
 	_currentAdapter = newAdapter;
-  [_currentAdapter retain];
 }
 
 #pragma mark -
@@ -545,8 +524,7 @@ NSString * const kAdTypeMraid = @"mraid";
 	MPLogInfo(@"Ad view (%p) received valid response from MoPub server.", self);
 	
 	// Initialize data.
-	[_data release];
-	_data = [[NSMutableData data] retain];
+	_data = [NSMutableData data];
 	
 	// Parse response headers, set relevant URLs and booleans.
 	NSDictionary *headers = [(NSHTTPURLResponse *)response allHeaderFields];
@@ -638,7 +616,7 @@ NSString * const kAdTypeMraid = @"mraid";
 	Class cls = NSClassFromString(classString);
 	if (cls != nil)
 	{
-		MPBaseAdapter *newAdapter = [(MPBaseAdapter *)[[cls alloc] initWithAdapterDelegate:self] autorelease];
+		MPBaseAdapter *newAdapter = (MPBaseAdapter *)[[cls alloc] initWithAdapterDelegate:self];
 		[self replaceCurrentAdapterWithAdapter:newAdapter];
 		
 		[connection cancel];
@@ -717,7 +695,7 @@ NSString * const kAdTypeMraid = @"mraid";
 
 - (void)handleMraidRequest
 {
-	MPMraidAdapter *adapter = [[[MPMraidAdapter alloc] initWithAdapterDelegate:self] autorelease];
+	MPMraidAdapter *adapter = [[MPMraidAdapter alloc] initWithAdapterDelegate:self];
 	[self replaceCurrentAdapterWithAdapter:adapter];
 
 	CGSize size = self.adView.creativeSize;
@@ -735,7 +713,6 @@ NSString * const kAdTypeMraid = @"mraid";
 	{
 		NSString *response = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
 		MPLogTrace(@"Ad view (%p) loaded HTML content: %@", self, response);
-		[response release];
 	}
 }
 
@@ -801,9 +778,8 @@ NSString * const kAdTypeMraid = @"mraid";
         // XXX: Millennial says an MMAdView must not be deallocated immediately after it fails
         // to load an ad, because it will result in a crash. This means that we can't immediately 
         // release our Millennial adapters. Their suggestion was to use this ugly delay.
-        [_currentAdapter performSelector:@selector(release) withObject:nil afterDelay:1];
+//        [_currentAdapter performSelector:@selector(release) withObject:nil afterDelay:1];
     } else {
-        [_currentAdapter release];
     }
     
 	_currentAdapter = nil;
@@ -955,7 +931,7 @@ NSString * const kAdTypeMraid = @"mraid";
 	UIWebView *webView = [[UIWebView alloc] initWithFrame:frame];
 	webView.backgroundColor = [UIColor clearColor];
 	webView.opaque = NO;
-	return [webView autorelease];
+	return webView;
 }
 
 # pragma mark -

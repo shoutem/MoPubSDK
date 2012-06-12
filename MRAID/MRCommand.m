@@ -46,13 +46,9 @@
 
 + (id)commandForString:(NSString *)string {
     Class commandClass = [self commandClassForString:string];
-    return [[[commandClass alloc] init] autorelease];
+    return [[commandClass alloc] init];
 }
 
-- (void)dealloc {
-    [_parameters release];
-    [super dealloc];
-}
 
 - (BOOL)execute {
     return YES;

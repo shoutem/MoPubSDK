@@ -26,8 +26,8 @@ static NSString * const kOrientationBoth				= @"b";
 @interface MPInterstitialAdController ()
 
 @property (nonatomic, assign) InterstitialCloseButtonStyle closeButtonStyle;
-@property (nonatomic, retain) UIButton *closeButton;
-@property (nonatomic, retain) MPBaseInterstitialAdapter *currentAdapter;
+@property (nonatomic) UIButton *closeButton;
+@property (nonatomic) MPBaseInterstitialAdapter *currentAdapter;
 
 - (id)initWithAdUnitId:(NSString *)ID parentViewController:(UIViewController *)parent;
 - (void)setCloseButtonImageNamed:(NSString *)name;
@@ -86,8 +86,8 @@ static NSString * const kOrientationBoth				= @"b";
 		// Create the ad controller if it doesn't exist.
 		if (!controller)
 		{
-			controller = [[[MPInterstitialAdController alloc] initWithAdUnitId:ID 
-														  parentViewController:nil] autorelease];
+			controller = [[MPInterstitialAdController alloc] initWithAdUnitId:ID 
+														  parentViewController:nil];
 			[controllers addObject:controller];
 		}
 		return controller;
@@ -141,11 +141,6 @@ static NSString * const kOrientationBoth				= @"b";
 	_parent = nil;
 	_adView.delegate = nil;
 	[_currentAdapter unregisterDelegate];
-	[_currentAdapter release];
-	[_adView release];
-	[_adUnitId release];
-    [_closeButton release];
-    [super dealloc];
 }
 
 - (void)viewDidLoad
@@ -413,8 +408,8 @@ static NSString * const kOrientationBoth				= @"b";
 	if (cls != nil)
 	{
 		[self.currentAdapter unregisterDelegate];	
-		self.currentAdapter = [(MPBaseInterstitialAdapter *)
-							   [[cls alloc] initWithInterstitialAdController:self] autorelease];
+		self.currentAdapter = (MPBaseInterstitialAdapter *)
+							   [[cls alloc] initWithInterstitialAdController:self];
 		[self.currentAdapter _getAdWithParams:params];
 	}
 	else 

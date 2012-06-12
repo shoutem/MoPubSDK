@@ -28,13 +28,10 @@
     [_adView loadCreativeWithHTMLString:payloadString 
                                 baseURL:nil];
     
-    [payloadString release];
 }
 
 - (void)dealloc {
     _adView.delegate = nil;
-    [_adView release];
-    [super dealloc];
 }
 
 - (void)rotateToOrientation:(UIInterfaceOrientation)newOrientation {

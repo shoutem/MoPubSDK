@@ -10,7 +10,7 @@
 #import "MPLogging.h"
 
 @interface MPTimer ()
-@property (nonatomic, retain) NSTimer *timer;
+@property (nonatomic) NSTimer *timer;
 @property (nonatomic, copy) NSDate *pauseDate;
 @end
 
@@ -29,7 +29,7 @@
                                              selector:aSelector 
                                              userInfo:userInfo 
                                               repeats:repeats];
-    return [m autorelease];
+    return m;
 }
 
 + (MPTimer *)timerWithTimeInterval:(NSTimeInterval)seconds target:(id)target 
@@ -41,15 +41,12 @@
 									selector:aSelector 
 									userInfo:userInfo 
 									 repeats:repeats];
-	return [m autorelease];
+	return m;
 }
 
 - (void)dealloc
 {
 	[_timer invalidate];
-	[_timer release];
-	[_pauseDate release];
-	[super dealloc];
 }
 
 - (BOOL)isValid
@@ -65,7 +62,7 @@
 - (BOOL)isScheduled
 {
 	CFRunLoopRef runLoopRef = [[NSRunLoop currentRunLoop] getCFRunLoop];
-	return CFRunLoopContainsTimer(runLoopRef, (CFRunLoopTimerRef)self.timer, kCFRunLoopDefaultMode);
+	return CFRunLoopContainsTimer(runLoopRef, (__bridge CFRunLoopTimerRef)self.timer, kCFRunLoopDefaultMode);
 }
 
 - (BOOL)scheduleNow
@@ -163,11 +160,6 @@
 	return self;
 }
 
-- (void)dealloc
-{
-	[_notificationName release];
-	[super dealloc];
-}
 
 - (void)postNotification
 {

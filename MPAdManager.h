@@ -49,7 +49,7 @@ extern NSString * const kAdTypeClear;
     UIWebViewDelegate>
 #endif
 {
-	MPAdView *_adView;
+	MPAdView *__unsafe_unretained _adView;
 
 	// Ad unit identifier for the ad view.
 	NSString *_adUnitId;
@@ -123,9 +123,9 @@ extern NSString * const kAdTypeClear;
     BOOL _shouldLoadMRAIDAd;
 }
 
-@property (nonatomic, readonly) MPAdView *adView;
+@property (unsafe_unretained, nonatomic, readonly) MPAdView *adView;
 
-@property (nonatomic, retain) MPTimer *autorefreshTimer;
+@property (nonatomic, strong) MPTimer *autorefreshTimer;
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

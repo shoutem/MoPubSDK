@@ -49,45 +49,45 @@
 
 - (void)reportApplicationOpenSynchronous:(NSDictionary *)context
 {
-	NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+	@autoreleasepool {
 	
-	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-	if ([paths count] <= 0) {[pool release]; return;}
+		NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
+		if ([paths count] <= 0) { return;}
 
+		
+		NSString *documentsDir = [paths objectAtIndex:0];
+		NSString *appOpenLogPath = [documentsDir stringByAppendingPathComponent:@"mopubAppOpen.log"];
+		NSFileManager *fileManager = [NSFileManager defaultManager];
+		
+		// The existence of mopubAppOpen.log tells us whether we have already reported this app open.
+		if ([fileManager fileExistsAtPath:appOpenLogPath]) { return;}
+		
+		NSString *appID = [context objectForKey:kApplicationIdContextKey];
+		NSString *userAgent = [context objectForKey:kUserAgentContextKey];
+		
+		NSString *appOpenUrlString = [NSString stringWithFormat:@"http://%@/m/open?v=8&udid=%@&id=%@",
+									  HOSTNAME,
+									  MPHashedUDID(),
+									  appID];
+		
+		MPLogInfo(@"Reporting application did launch for the first time to MoPub: %@", appOpenUrlString);
+		
+		NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:
+										[NSURL URLWithString:appOpenUrlString]];
+		[request setValue:userAgent forHTTPHeaderField:@"User-Agent"];
+		
+		NSURLResponse *response;
+		NSError *error = nil;
+		NSData *responseData = [NSURLConnection sendSynchronousRequest:request 
+													 returningResponse:&response 
+																 error:&error];
+		
+		if ((!error) && ([(NSHTTPURLResponse *)response statusCode] == 200) && 
+			([responseData length] > 0))
+		{
+			[fileManager createFileAtPath:appOpenLogPath contents:nil attributes:nil];
+		}
 	
-	NSString *documentsDir = [paths objectAtIndex:0];
-	NSString *appOpenLogPath = [documentsDir stringByAppendingPathComponent:@"mopubAppOpen.log"];
-	NSFileManager *fileManager = [NSFileManager defaultManager];
-	
-	// The existence of mopubAppOpen.log tells us whether we have already reported this app open.
-	if ([fileManager fileExistsAtPath:appOpenLogPath]) {[pool release]; return;}
-	
-	NSString *appID = [context objectForKey:kApplicationIdContextKey];
-	NSString *userAgent = [context objectForKey:kUserAgentContextKey];
-	
-	NSString *appOpenUrlString = [NSString stringWithFormat:@"http://%@/m/open?v=8&udid=%@&id=%@",
-								  HOSTNAME,
-								  MPHashedUDID(),
-								  appID];
-	
-	MPLogInfo(@"Reporting application did launch for the first time to MoPub: %@", appOpenUrlString);
-	
-	NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:
-									[NSURL URLWithString:appOpenUrlString]];
-	[request setValue:userAgent forHTTPHeaderField:@"User-Agent"];
-	
-	NSURLResponse *response;
-	NSError *error = nil;
-	NSData *responseData = [NSURLConnection sendSynchronousRequest:request 
-												 returningResponse:&response 
-															 error:&error];
-	
-	if ((!error) && ([(NSHTTPURLResponse *)response statusCode] == 200) && 
-		([responseData length] > 0))
-	{
-		[fileManager createFileAtPath:appOpenLogPath contents:nil attributes:nil];
 	}
-	
-	[pool release];
 }
 @end
