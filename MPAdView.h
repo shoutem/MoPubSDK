@@ -8,251 +8,327 @@
 
 #import <UIKit/UIKit.h>
 #import <CoreLocation/CoreLocation.h>
-#import "MPGlobal.h"
 #import "MPConstants.h"
-#import "MPLogging.h"
 
 typedef enum
 {
-	MPAdAnimationTypeNone,
-	MPAdAnimationTypeRandom,
-	MPAdAnimationTypeFlipFromLeft,
-	MPAdAnimationTypeFlipFromRight,
-	MPAdAnimationTypeCurlUp,
-	MPAdAnimationTypeCurlDown,
-	MPAdAnimationTypeFade,
-	// Important: additional types must be added here to maintain backwards compatibility.
-	MPAdAnimationTypeCount
-} MPAdAnimationType;
-
-typedef enum
-{
-	MPNativeAdOrientationAny,
-	MPNativeAdOrientationPortrait,
-	MPNativeAdOrientationLandscape
+    MPNativeAdOrientationAny,
+    MPNativeAdOrientationPortrait,
+    MPNativeAdOrientationLandscape
 } MPNativeAdOrientation;
 
 @protocol MPAdViewDelegate;
-@class MPAdManager;
 
-@interface MPAdView : UIView  
-{
-	// Delegate object for the ad view.
-	id<MPAdViewDelegate> _delegate;
-	
-	// "Business-logic" object for the ad view.
-	MPAdManager *_adManager;
-	
-	// Ad unit identifier for the ad view.
-	NSString *_adUnitId;
-	
-	// Location data which may be used for targeting.
-	CLLocation *_location;
-		
-	// Subview that represents the actual ad content. Set via -setAdContentView.
-	UIView *_adContentView;
-	
-	// Stores the initial size of the ad view.
-	CGSize _originalSize;
-	
-	// Stores the size of the ad creative (handed down from the server). If the server does not
-	// pass back size information, this value will be equal to _originalSize.
-	CGSize _creativeSize;
-	
-	// Whether scrolling is enabled for the ad view.
-	BOOL _scrollable;
-	
-	// Whether location data should be sent with MoPub ad requests.
-	BOOL _locationEnabled;
-	
-	// The number of decimal digits to include in location data sent with MoPub ad requests.
-	NSUInteger _locationPrecision;
-	
-	// Pair of strings representing latitude and longitude, taking into account the values of 
-	// _locationEnabled and _locationPrecision.
-	NSArray *_locationDescriptionPair;
-	
-	// Specifies the transition used for bringing an ad into view. You can specify an
-	// animation type for any ad unit using the MoPub web interface.
-	MPAdAnimationType _animationType;
-	
-	MPNativeAdOrientation _allowedNativeAdOrientation;
-	
-	// Whether the ad view ignores autorefresh values sent down from the server. If YES,
-	// the ad view will never refresh once it has an ad.
-	BOOL _ignoresAutorefresh;
-}
+/**
+ * The MPAdView class provides a view that can display banner advertisements.
+ */
 
-@property (nonatomic, assign) id<MPAdViewDelegate> delegate;
-@property (nonatomic, copy) NSString *adUnitId;
-@property (nonatomic, copy) CLLocation *location;
-@property (nonatomic, retain) NSString *keywords;
-@property (nonatomic, assign) CGSize creativeSize;
-@property (nonatomic, assign) BOOL scrollable;
-@property (nonatomic, assign) BOOL locationEnabled;
-@property (nonatomic, assign) NSUInteger locationPrecision;
-@property (nonatomic, assign) MPAdAnimationType animationType;
-@property (nonatomic, assign) BOOL ignoresAutorefresh;
+@interface MPAdView : UIView
 
-@property (nonatomic, retain) MPAdManager *adManager;
-/*
- * Returns an MPAdView with the given ad unit ID.
+/** @name Initializing a Banner Ad */
+
+/**
+ * Initializes an MPAdView with the given ad unit ID and banner size.
+ *
+ * @param adUnitId A string representing a MoPub ad unit ID.
+ * @param size The desired ad size. A list of standard ad sizes is available in MPConstants.h.
+ * @return A newly initialized ad view corresponding to the given ad unit ID and size.
  */
 - (id)initWithAdUnitId:(NSString *)adUnitId size:(CGSize)size;
 
-/* 
- * Ad sizes may vary between different ad networks. This method returns the actual
- * size of the underlying ad, which you can use to adjust the size of the MPAdView
- * to avoid clipping or border issues.
- */
-- (CGSize)adContentViewSize;
+/** @name Setting and Getting the Delegate */
 
-/*
- * Returns an array of two strings representing location coordinates (possibly truncated) as long as
- * a location has been set and locationEnabled is set to YES. If these conditions are not met, this 
- * method will return nil.
+/**
+ * The delegate (`MPAdViewDelegate`) of the ad view.
+ *
+ * @warning **Important**: Before releasing an instance of `MPAdView`, you must set its delegate
+ * property to `nil`.
  */
-- (NSArray *)locationDescriptionPair;
+@property (nonatomic, assign) id<MPAdViewDelegate> delegate;
 
-/*
- * Loads a new ad using a default URL constructed from the ad unit ID.
+/** @name Setting Request Parameters */
+
+/**
+ * The MoPub ad unit ID for this ad view.
+ *
+ * Ad unit IDs are created on the MoPub website. An ad unit is a defined placement in your
+ * application set aside for advertising. If no ad unit ID is set, the ad view will use a default
+ * ID that only receives test ads.
+ */
+@property (nonatomic, copy) NSString *adUnitId;
+
+/**
+ * A string representing a set of keywords that should be passed to the MoPub ad server to receive
+ * more relevant advertising.
+ *
+ * Keywords are typically used to target ad campaigns at specific user segments. They should be
+ * formatted as comma-separated key-value pairs (e.g. "marital:single,age:24").
+ *
+ * On the MoPub website, keyword targeting options can be found under the "Advanced Targeting"
+ * section when managing campaigns.
+ */
+@property (nonatomic, retain) NSString *keywords;
+
+/**
+ * A `CLLocation` object representing a user's location that should be passed to the MoPub ad server
+ * to receive more relevant advertising.
+ */
+@property (nonatomic, copy) CLLocation *location;
+
+/** @name Enabling Test Mode */
+
+/**
+ * A Boolean value that determines whether the ad view should request ads in test mode.
+ *
+ * The default value is NO.
+ * @warning **Important**: If you set this value to YES, make sure to reset it to NO before
+ * submitting your application to the App Store.
+ */
+@property (nonatomic, assign, getter = isTesting) BOOL testing;
+
+/** @name Loading a Banner Ad */
+
+/**
+ * Requests a new ad from the MoPub ad server.
+ *
+ * If the ad view is already loading an ad, this call will be ignored. You may use `forceRefreshAd`
+ * if you would like cancel any existing ad requests and force a new ad to load.
  */
 - (void)loadAd;
 
-/*
- * Loads a new ad using the specified URL.
- */
-- (void)loadAdWithURL:(NSURL *)URL;
-
-/*
- * Tells the ad view to get another ad using its current URL. Note: if the ad view
- * is already loading an ad, this call does nothing; use -forceRefreshAd instead
- * if you want to cancel any existing ad requests.
+/**
+ * Requests a new ad from the MoPub ad server.
+ *
+ * If the ad view is already loading an ad, this call will be ignored. You may use `forceRefreshAd`
+ * if you would like cancel any existing ad requests and force a new ad to load.
+ *
+ * **Warning**: This method has been deprecated. Use `loadAd` instead.
  */
 - (void)refreshAd;
 
-/*
- * Tells the ad view to get another ad using its current URL, and cancels any existing
- * ad requests.
+/**
+ * Cancels any existing ad requests and requests a new ad from the MoPub ad server.
  */
 - (void)forceRefreshAd;
 
-/*
- * Replaces the content of the MPAdView with the specified view and retains the view.
- * 
- * This method is crucial for implementing adapters or custom events involving other 
- * ad networks.
- */
-- (void)setAdContentView:(UIView *)view;
+/** @name Handling Orientation Changes */
 
-/*
- * Signals the internal webview that it has appeared on-screen.
- */
-- (void)adViewDidAppear;
-
-/* 
- * Informs the ad view that the device orientation has changed. You should call
- * this method when your application's orientation changes if you want your
- * underlying ads to adjust their orientation properly. You may want to use
- * this method in conjunction with -adContentViewSize, in case the orientation
- * change modifies the size of the underlying ad.
+/**
+ * Informs the ad view that the device orientation has changed.
+ *
+ * Banners from some third-party ad networks have orientation-specific behavior. You should call
+ * this method when your application's orientation changes if you want mediated ads to acknowledge
+ * their new orientation.
+ *
+ * If your application layout needs to change based on the size of the mediated ad, you may want to
+ * check the value of `adContentViewSize` after calling this method, in case the orientation change
+ * causes the mediated ad to resize.
+ *
+ * @param newOrientation The new interface orientation (after orientation changes have occurred).
  */
 - (void)rotateToOrientation:(UIInterfaceOrientation)newOrientation;
 
-/*
- * Signals the internal webview that it has been closed. This will trigger
- * the -adViewShouldClose delegate callback, if it is implemented.
- */
-- (void)didCloseAd:(id)sender;
-
-/*
- * Signals to the ad view that a custom event has caused ad content to load
- * successfully. You must call this method if you implement custom events.
- */
-- (void)customEventDidLoadAd;
-
-/*
- * Signals to the ad view that a custom event has resulted in a failed load.
- * You must call this method if you implement custom events.
- */
-- (void)customEventDidFailToLoadAd;
-
-/*
- * Signals to the ad view that a user has tapped on a custom-event-triggered ad.
- * You must call this method if you implement custom events, for proper click tracking.
- */
-- (void)customEventActionWillBegin;
-
-/*
- * Signals to the ad view that a user has stopped interacting with a custom-event-triggered ad. 
- * You must call this method if you implement custom events.
- */
-- (void)customEventActionDidEnd;
-
-/*
- * Forces native ad networks to only use ads sized for the specified orientation. For instance, 
- * if you call this with UIInterfaceOrientationPortrait, native networks (e.g. iAd) will never 
+/**
+ * Forces third-party native ad networks to only use ads sized for the specified orientation.
+ *
+ * Banners from some third-party ad networks have orientation-specific behaviors and/or sizes.
+ * You may use this method to lock ads to a certain orientation. For instance,
+ * if you call this with MPInterfaceOrientationPortrait, native networks (e.g. iAd) will never
  * return ads sized for the landscape orientation.
+ *
+ * @param orientation An MPNativeAdOrientation enum value.
+ *
+ * <pre><code>typedef enum {
+ *          MPNativeAdOrientationAny,
+ *          MPNativeAdOrientationPortrait,
+ *          MPNativeAdOrientationLandscape
+ *      } MPNativeAdOrientation;
+ * </pre></code>
+ *
+ * @see unlockNativeAdsOrientation
+ * @see allowedNativeAdsOrientation
  */
+
 - (void)lockNativeAdsToOrientation:(MPNativeAdOrientation)orientation;
 
-/*
- * Allows native ad networks to use ads sized for any orientation. See -lockNativeAdsToOrientation:.
+/**
+ * Allows third-party native ad networks to use ads sized for any orientation.
+ *
+ * You do not need to call this method unless you have previously called
+ * `lockNativeAdsToOrientation:`.
+ *
+ * @see lockNativeAdsToOrientation:
+ * @see allowedNativeAdsOrientation
  */
 - (void)unlockNativeAdsOrientation;
 
+/**
+ * Returns the banner orientations that third-party ad networks are allowed to use.
+ *
+ * @return An enum value representing an allowed set of orientations.
+ *
+ * @see lockNativeAdsToOrientation:
+ * @see unlockNativeAdsOrientation
+ */
 - (MPNativeAdOrientation)allowedNativeAdsOrientation;
+
+/** @name Obtaining the Size of the Current Ad */
+
+/**
+ * Returns the size of the current ad being displayed in the ad view.
+ *
+ * Ad sizes may vary between different ad networks. This method returns the actual size of the
+ * underlying mediated ad. This size may be different from the original, initialized size of the
+ * ad view. You may use this size to determine to adjust the size or positioning of the ad view
+ * to avoid clipping or border issues.
+ *
+ * @returns The size of the underlying mediated ad.
+ */
+- (CGSize)adContentViewSize;
+
+/** @name Managing the Automatic Refreshing of Ads */
+
+/**
+ * A Boolean value that determines whether the ad view should ignore directions from the MoPub
+ * ad server to periodically refresh its contents.
+ *
+ * The default value of this property is NO. Set the property to YES if you want to prevent your ad
+ * view from automatically refreshing. *Note:* if you wish to set the property to YES, you should do
+ * so before you call `loadAd` for the first time.
+ */
+@property (nonatomic, assign) BOOL ignoresAutorefresh;
+
+#pragma mark - Deprecated
+
+/** @name Handling Custom Event Methods (Deprecated) */
+
+/**
+ * Signals to the ad view that a custom event has caused ad content to load
+ * successfully.
+ *
+ * @bug **Warning**: This method has been deprecated. You should instead implement banner custom
+ * events using a subclass of `MPBannerCustomEvent`.
+ */
+- (void)customEventDidLoadAd;
+
+/**
+ * Signals to the ad view that a custom event has resulted in a failed load.
+ *
+ * @bug **Warning**: This method has been deprecated. You should instead implement banner custom
+ * events using a subclass of `MPBannerCustomEvent`.
+ */
+- (void)customEventDidFailToLoadAd;
+
+/**
+ * Signals to the ad view that a user has tapped on a custom-event-triggered ad.
+ *
+ * @bug **Warning**: This method has been deprecated. You should instead implement banner custom
+ * events using a subclass of `MPBannerCustomEvent`.
+ */
+- (void)customEventActionWillBegin;
+
+/**
+ * Signals to the ad view that a user has stopped interacting with a custom-event-triggered ad.
+ *
+ * @bug **Warning**: This method has been deprecated. You should instead implement banner custom
+ * events using a subclass of `MPBannerCustomEvent`.
+ */
+- (void)customEventActionDidEnd;
+
+/**
+ * Replaces the content of the MPAdView with the specified view.
+ *
+ * @bug **Warning**: This method has been deprecated. You should instead implement banner custom
+ * events using a subclass of `MPBannerCustomEvent`.
+ *
+ * @param view A view representing some banner content.
+ */
+- (void)setAdContentView:(UIView *)view;
 
 @end
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#pragma mark -
+
+/**
+ * The delegate of an `MPAdView` object must adopt the `MPAdViewDelegate` protocol. It must
+ * implement `viewControllerForPresentingModalView` to provide a root view controller from which
+ * the ad view should present modal content.
+ *
+ * Optional methods of this protocol allow the delegate to be notified of banner success or
+ * failure, as well as other lifecycle events.
+ */
 
 @protocol MPAdViewDelegate <NSObject>
 
 @required
-/*
- * The ad view relies on this method to determine which view controller will be 
- * used for presenting/dismissing modal views, such as the browser view presented 
- * when a user clicks on an ad.
+
+/** @name Managing Modal Content Presentation */
+
+/**
+ * Asks the delegate for a view controller to use for presenting modal content, such as the in-app
+ * browser that can appear when an ad is tapped.
+ *
+ * @return A view controller that should be used for presenting modal content.
  */
 - (UIViewController *)viewControllerForPresentingModalView;
 
 @optional
-/*
- * These callbacks notify you regarding whether the ad view (un)successfully
- * loaded an ad.
+
+/** @name Detecting When a Banner Ad is Loaded */
+
+/**
+ * Sent when an ad view successfully loads an ad.
+ *
+ * Your implementation of this method should insert the ad view into the view hierarchy, if you
+ * have not already done so.
+ *
+ * @param view The ad view sending the message.
  */
-- (void)adViewDidFailToLoadAd:(MPAdView *)view;
 - (void)adViewDidLoadAd:(MPAdView *)view;
 
-/*
- * These callbacks are triggered when the ad view is about to present/dismiss a
- * modal view. If your application may be disrupted by these actions, you can
- * use these notifications to handle them (for example, a game might need to
- * pause/unpause).
+/**
+ * Sent when an ad view fails to load an ad.
+ *
+ * To avoid displaying blank ads, you should hide the ad view in response to this message.
+ *
+ * @param view The ad view sending the message.
+ */
+- (void)adViewDidFailToLoadAd:(MPAdView *)view;
+
+/** @name Detecting When a User Interacts With the Ad View */
+
+/**
+ * Sent when an ad view is about to present modal content.
+ *
+ * This method is called when the user taps on the ad view. Your implementation of this method
+ * should pause any application activity that requires user interaction.
+ *
+ * @param view The ad view sending the message.
+ * @see `didDismissModalViewForAd:`
  */
 - (void)willPresentModalViewForAd:(MPAdView *)view;
+
+/**
+ * Sent when an ad view has dismissed its modal content, returning control to your application.
+ *
+ * Your implementation of this method should resume any application activity that was paused
+ * in response to `willPresentModalViewForAd:`.
+ *
+ * @param view The ad view sending the message.
+ * @see `willPresentModalViewForAd:`
+ */
 - (void)didDismissModalViewForAd:(MPAdView *)view;
 
-/*
- * This callback is triggered when the ad view has retrieved ad parameters
- * (headers) from the MoPub server. See MPInterstitialAdController for an
- * example of how this should be used.
+/**
+ * Sent when a user is about to leave your application as a result of tapping
+ * on an ad.
+ *
+ * Your application will be moved to the background shortly after this method is called.
+ *
+ * @param view The ad view sending the message.
  */
-- (void)adView:(MPAdView *)view didReceiveResponseParams:(NSDictionary *)params;
-
-/*
- * This method is called when a mopub://close link is activated. Your implementation of this
- * method should remove the ad view from the screen (see MPInterstitialAdController for an example).
- */
-- (void)adViewShouldClose:(MPAdView *)view;
-
-@end
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-@interface MPInterstitialAdView : MPAdView
-
-- (void)forceRedraw;
+- (void)willLeaveApplicationFromAd:(MPAdView *)view;
 
 @end
